@@ -4,6 +4,13 @@ import CredentialsProvider from "next-auth/providers/credentials";
 import GithubProvider from "next-auth/providers/github";
 import { db } from "../../../../lib/db";
 
+// Define a custom user type to include stripeId
+interface UserWithStripe {
+  id: string;
+  stripeId?: string | null;
+  [key: string]: any;
+}
+
 // Extend the built-in session types
 declare module "next-auth" {
   interface Session {
@@ -12,7 +19,17 @@ declare module "next-auth" {
       name?: string | null;
       email?: string | null;
       image?: string | null;
+      stripeId?: string | null;
     }
+  }
+  
+  interface User extends UserWithStripe {}
+}
+
+// Extend JWT to include stripeId
+declare module "next-auth/jwt" {
+  interface JWT {
+    stripeId?: string | null;
   }
 }
 
@@ -60,9 +77,31 @@ const authOptions: AuthOptions = {
     strategy: "jwt",
   },
   callbacks: {
+    async jwt({ token, user }) {
+      // Initial sign in
+      if (user) {
+        const userWithStripe = user as UserWithStripe;
+        token.sub = userWithStripe.id;
+        
+        // Fetch the user's stripeId if it's not already included
+        if (!userWithStripe.stripeId) {
+          const dbUser = await db.user.findUnique({
+            where: { id: userWithStripe.id },
+            select: { stripeId: true }
+          });
+          if (dbUser?.stripeId) {
+            token.stripeId = dbUser.stripeId;
+          }
+        } else {
+          token.stripeId = userWithStripe.stripeId;
+        }
+      }
+      return token;
+    },
     async session({ session, token }) {
       if (token.sub && session.user) {
         session.user.id = token.sub;
+        session.user.stripeId = token.stripeId;
       }
       return session;
     },
