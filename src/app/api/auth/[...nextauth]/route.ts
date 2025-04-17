@@ -2,7 +2,7 @@ import { PrismaAdapter } from "@auth/prisma-adapter";
 import NextAuth, { AuthOptions } from "next-auth";
 import CredentialsProvider from "next-auth/providers/credentials";
 import GithubProvider from "next-auth/providers/github";
-import { db } from "@/lib/db";
+import { db } from "../../../../lib/db";
 
 // Extend the built-in session types
 declare module "next-auth" {
@@ -16,7 +16,7 @@ declare module "next-auth" {
   }
 }
 
-export const authOptions: AuthOptions = {
+const authOptions: AuthOptions = {
   adapter: PrismaAdapter(db),
   providers: [
     GithubProvider({
