@@ -16,6 +16,14 @@ declare module "next-auth" {
   }
 }
 
+// Make sure the Prisma client is initialized
+try {
+  // A simple query to test the connection
+  db.$connect();
+} catch (error) {
+  console.error("Failed to connect to the database:", error);
+}
+
 const authOptions: AuthOptions = {
   adapter: PrismaAdapter(db),
   providers: [
@@ -61,5 +69,8 @@ const authOptions: AuthOptions = {
   },
 };
 
+// Create the NextAuth handler
 const handler = NextAuth(authOptions);
+
+// Export the handler for GET and POST methods
 export { handler as GET, handler as POST }; 
