@@ -3,12 +3,21 @@ import NextAuth, { AuthOptions } from "next-auth";
 import CredentialsProvider from "next-auth/providers/credentials";
 import GithubProvider from "next-auth/providers/github";
 import { db } from "../../../../lib/db";
+import * as crypto from 'crypto';
 
 // Define a custom user type to include stripeId
 interface UserWithStripe {
   id: string;
   stripeId?: string | null;
   [key: string]: any;
+}
+
+// Simple function to hash passwords
+function hashPassword(password: string): string {
+  return crypto
+    .createHash('sha256')
+    .update(password)
+    .digest('hex');
 }
 
 // Extend the built-in session types
@@ -55,18 +64,34 @@ const authOptions: AuthOptions = {
         password: { label: "Password", type: "password" },
       },
       async authorize(credentials) {
-        // TODO: Implement credentials authentication
-        // For now, we'll use a placeholder
         if (!credentials?.email || !credentials?.password) {
-          throw new Error("Invalid credentials");
+          throw new Error("Email and password are required");
         }
         
-        // In a real implementation, you would:
-        // 1. Find the user by email
-        // 2. Verify password hash
-        // 3. Return user data or null
+        // Find user by email
+        const user = await db.user.findUnique({
+          where: { email: credentials.email },
+        });
         
-        return null;
+        // If no user found or password doesn't match
+        if (!user || !user.passwordHash) {
+          throw new Error("Invalid email or password");
+        }
+        
+        // Hash the provided password and compare
+        const hashedPassword = hashPassword(credentials.password);
+        
+        if (hashedPassword !== user.passwordHash) {
+          throw new Error("Invalid email or password");
+        }
+        
+        // Return user data
+        return {
+          id: user.id,
+          email: user.email,
+          name: user.email.split('@')[0], // Basic name from email
+          stripeId: user.stripeId,
+        };
       },
     }),
   ],

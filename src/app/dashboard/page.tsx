@@ -1,9 +1,14 @@
 'use client';
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
 import Link from "next/link";
+import { useSession, signOut } from "next-auth/react";
 
 export default function DashboardPage() {
+  const router = useRouter();
+  const { data: session, status } = useSession();
+  
   const [projects] = useState([
     {
       id: "1",
@@ -18,6 +23,28 @@ export default function DashboardPage() {
       githubLink: "https://github.com/user/store",
     },
   ]);
+  
+  // Handle sign out
+  const handleSignOut = async () => {
+    await signOut({ redirect: false });
+    router.push('/');
+  };
+  
+  // If loading session data, show loading state
+  if (status === "loading") {
+    return (
+      <div className="flex min-h-screen items-center justify-center">
+        <p className="text-lg">Loading...</p>
+      </div>
+    );
+  }
+  
+  // If user is not authenticated or hasn't paid, redirect them
+  if (status === "unauthenticated" || !session?.user?.stripeId) {
+    // This is a fallback - middleware should handle this case
+    router.push('/checkout');
+    return null;
+  }
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -31,9 +58,17 @@ export default function DashboardPage() {
             <Link href="/export" className="text-blue-600 hover:text-blue-800">
               Export
             </Link>
-            <button className="px-4 py-2 bg-gray-200 rounded-md hover:bg-gray-300">
-              Sign Out
-            </button>
+            <div className="flex items-center gap-4">
+              <div className="text-sm text-gray-700">
+                {session.user.email}
+              </div>
+              <button 
+                onClick={handleSignOut}
+                className="px-4 py-2 bg-gray-200 rounded-md hover:bg-gray-300"
+              >
+                Sign Out
+              </button>
+            </div>
           </nav>
         </div>
       </header>
