@@ -5,7 +5,7 @@ import { db } from '../../../lib/db';
 
 // Initialize Stripe with your secret key
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
-  apiVersion: '2023-10-16' as any, // Force type to bypass the version check
+  apiVersion: '2025-03-31' as any, // Force type to bypass the version check
 });
 
 export async function POST(request: Request) {
@@ -32,6 +32,9 @@ export async function POST(request: Request) {
       );
     }
 
+    // Use NEXT_PUBLIC_APP_URL or fall back to a default
+    const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
+
     // Create Stripe checkout session
     const checkoutSession = await stripe.checkout.sessions.create({
       payment_method_types: ['card'],
@@ -49,8 +52,8 @@ export async function POST(request: Request) {
         },
       ],
       mode: 'payment',
-      success_url: `${process.env.NEXT_PUBLIC_APP_URL}/api/payment/success?session_id={CHECKOUT_SESSION_ID}`,
-      cancel_url: `${process.env.NEXT_PUBLIC_APP_URL}/checkout`,
+      success_url: `${baseUrl}/api/payment/success?session_id={CHECKOUT_SESSION_ID}`,
+      cancel_url: `${baseUrl}/checkout`,
       metadata: {
         userId: user.id,
       },
