@@ -3,21 +3,13 @@ import NextAuth, { AuthOptions } from "next-auth";
 import CredentialsProvider from "next-auth/providers/credentials";
 import GithubProvider from "next-auth/providers/github";
 import { db } from "../../../../lib/db";
-import * as crypto from 'crypto';
+import bcrypt from 'bcrypt';
 
 // Define a custom user type to include stripeId
 interface UserWithStripe {
   id: string;
   stripeId?: string | null;
-  [key: string]: any;
-}
-
-// Simple function to hash passwords
-function hashPassword(password: string): string {
-  return crypto
-    .createHash('sha256')
-    .update(password)
-    .digest('hex');
+  [key: string]: string | null;
 }
 
 // Extend the built-in session types
@@ -78,10 +70,10 @@ const authOptions: AuthOptions = {
           throw new Error("Invalid email or password");
         }
         
-        // Hash the provided password and compare
-        const hashedPassword = hashPassword(credentials.password);
+        // Compare password with bcrypt
+        const isValid = await bcrypt.compare(credentials.password, user.passwordHash);
         
-        if (hashedPassword !== user.passwordHash) {
+        if (!isValid) {
           throw new Error("Invalid email or password");
         }
         

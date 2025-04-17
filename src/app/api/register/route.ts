@@ -1,14 +1,9 @@
 import { NextResponse } from 'next/server';
 import { db } from '../../../lib/db';
-import * as crypto from 'crypto';
+import bcrypt from 'bcrypt';
 
-// Simple function to hash passwords
-function hashPassword(password: string): string {
-  return crypto
-    .createHash('sha256')
-    .update(password)
-    .digest('hex');
-}
+// Bcrypt salt rounds (higher is more secure but slower)
+const SALT_ROUNDS = 10;
 
 export async function POST(request: Request) {
   try {
@@ -35,8 +30,8 @@ export async function POST(request: Request) {
       );
     }
 
-    // Hash the password
-    const passwordHash = hashPassword(password);
+    // Hash the password with bcrypt
+    const passwordHash = await bcrypt.hash(password, SALT_ROUNDS);
 
     // Create the user
     const user = await db.user.create({

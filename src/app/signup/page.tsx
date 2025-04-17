@@ -5,6 +5,11 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { signIn } from "next-auth/react";
 
+// Define a proper error type
+interface ApiError extends Error {
+  message: string;
+}
+
 export default function SignupPage() {
   const router = useRouter();
   const [formData, setFormData] = useState({
@@ -78,8 +83,9 @@ export default function SignupPage() {
       
       // Redirect to dashboard
       router.push('/dashboard');
-    } catch (err: any) {
-      setError(err.message);
+    } catch (err: unknown) {
+      const error = err as ApiError;
+      setError(error.message);
       setLoading(false);
     }
   };

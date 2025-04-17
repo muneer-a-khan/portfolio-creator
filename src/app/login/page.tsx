@@ -5,6 +5,11 @@ import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { signIn, useSession } from "next-auth/react";
 
+// Define a proper error type
+interface ApiError extends Error {
+  message: string;
+}
+
 export default function LoginPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -62,8 +67,9 @@ export default function LoginPage() {
       
       // Redirect to dashboard or requested page
       router.push(redirect);
-    } catch (err: any) {
-      setError(err.message);
+    } catch (err: unknown) {
+      const error = err as ApiError;
+      setError(error.message);
       setLoading(false);
     }
   };
