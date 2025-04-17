@@ -4,7 +4,7 @@ import { useState } from "react";
 import Link from "next/link";
 
 export default function DashboardPage() {
-  const [projects, setProjects] = useState([
+  const [projects] = useState([
     {
       id: "1",
       title: "Personal Blog",
