@@ -1,26 +1,19 @@
 import Link from "next/link";
+import AuthStatus from "@/components/AuthStatus"; // Import AuthStatus
 
 export default function Home() {
   return (
     <div className="flex flex-col min-h-screen">
-      <header className="border-b">
+      <header className="border-b bg-white shadow-sm"> {/* Added bg-white and shadow-sm for consistency */}
         <div className="container mx-auto px-4 py-4 flex justify-between items-center">
-          <div className="font-bold text-2xl">InstantDevPortfolios</div>
-          <nav className="flex gap-4">
-            <Link href="/login" className="px-4 py-2 hover:underline">
-              Login
-            </Link>
-            <Link
-              href="/checkout"
-              className="px-4 py-2 bg-black text-white rounded-md hover:bg-black/80"
-            >
-              Get Started
-            </Link>
+          <Link href="/" className="font-bold text-2xl text-gray-800">InstantDevPortfolios</Link>
+          <nav className="flex gap-4 items-center"> {/* Added items-center */}
+            <AuthStatus /> {/* Added AuthStatus component */}
           </nav>
         </div>
       </header>
       
-      <main className="flex-1">
+      <main className="flex-1 bg-gray-50"> {/* Added bg-gray-50 for main content area */}
         {/* Hero Section */}
         <section className="py-20 px-4">
           <div className="container mx-auto max-w-5xl">

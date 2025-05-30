@@ -42,12 +42,31 @@ try {
   console.error("Failed to connect to the database:", error);
 }
 
+// Ensure environment variables are handled correctly.
+// Placeholders are used here if actual environment variables are not set.
+const githubId = process.env.GITHUB_ID || 'YOUR_GITHUB_ID_PLACEHOLDER';
+const githubSecret = process.env.GITHUB_SECRET || 'YOUR_GITHUB_SECRET_PLACEHOLDER';
+const nextAuthSecret = process.env.NEXTAUTH_SECRET || 'YOUR_NEXTAUTH_SECRET_PLACEHOLDER';
+
+if (githubId === 'YOUR_GITHUB_ID_PLACEHOLDER' || githubSecret === 'YOUR_GITHUB_SECRET_PLACEHOLDER') {
+  console.warn(
+    '\x1b[33m%s\x1b[0m', // Yellow color
+    'Warning: GITHUB_ID or GITHUB_SECRET environment variables are not set or are using placeholders. GitHub OAuth will not work.'
+  );
+}
+if (nextAuthSecret === 'YOUR_NEXTAUTH_SECRET_PLACEHOLDER') {
+    console.warn(
+      '\x1b[33m%s\x1b[0m', // Yellow color
+      'Warning: NEXTAUTH_SECRET environment variable is not set or is using a placeholder. This is insecure for production.'
+    );
+  }
+
 const authOptions: AuthOptions = {
   adapter: PrismaAdapter(db),
   providers: [
     GithubProvider({
-      clientId: process.env.GITHUB_ID as string,
-      clientSecret: process.env.GITHUB_SECRET as string,
+      clientId: githubId,
+      clientSecret: githubSecret,
     }),
     CredentialsProvider({
       name: "credentials",
@@ -93,6 +112,7 @@ const authOptions: AuthOptions = {
   session: {
     strategy: "jwt",
   },
+  secret: nextAuthSecret, // Added NEXTAUTH_SECRET to the config
   callbacks: {
     async jwt({ token, user }) {
       // Initial sign in
