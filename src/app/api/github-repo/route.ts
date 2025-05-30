@@ -46,14 +46,14 @@ export async function GET(req: NextRequest) {
 
     const { name, description, language, html_url } = data;
 
-    return NextResponse.json({ 
-      success: true, 
-      data: { 
+    return NextResponse.json({
+      success: true,
+      data: {
         name: name || repositoryName, // Fallback to parsed name if API name is null
-        description: description || '', 
-        language: language || null, 
-        html_url 
-      } 
+        description: description || '',
+        language: language || null,
+        html_url
+      }
     });
 
   } catch (error) {

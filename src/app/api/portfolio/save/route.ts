@@ -1,10 +1,18 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { PrismaClient } from '@prisma/client';
-// import { getServerSession } from "next-auth/next"; // Placeholder for auth
-// import { authOptions } from "@/lib/auth"; // Placeholder for auth options
+import { PrismaClient } from '@prisma/client'; // Assuming direct client usage if db helper is complex
+import { getServerSession } from "next-auth/next";
+import { authOptions } from '../../auth/[...nextauth]/route'; // Adjusted path to new authOptions
 
 // Ensure PrismaClient is initialized, possibly from a shared lib/db.ts file in a real app
-const prisma = new PrismaClient();
+// For consistency with the auth route, if it uses `import { db } from "../../../../lib/db";`,
+// this should ideally use the same `db` instance.
+// However, the prompt used `new PrismaClient()` here previously. I'll switch to the shared instance if possible.
+// Let's assume `prisma` is available via a lib, or use new PrismaClient() if not set up that way.
+// For now, sticking to new PrismaClient() as per original structure of this file.
+// If `import prisma from '@/lib/db'` was intended, it should be:
+// import prisma from '@/lib/db'; // This requires tsconfig paths setup or relative path.
+                               // Using relative path for now if no tsconfig paths.
+import { db as prisma } from '../../../../lib/db'; // Corrected import to use shared 'db' instance
 
 // Define a type for the expected request body structure
 // This should align with src/types/portfolio.ts but might need adjustments for Prisma (e.g. Json fields)
@@ -18,13 +26,12 @@ interface PortfolioSaveRequestBody {
 }
 
 export async function POST(req: NextRequest) {
-  // TODO: Replace with actual authentication to get userId
-  // const session = await getServerSession(authOptions);
-  // if (!session || !session.user || !session.user.id) {
-  //   return NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 });
-  // }
-  // const authenticatedUserId = session.user.id;
-  const authenticatedUserId = 'user_placeholder_123abc'; // Hardcoded for now
+  const session = await getServerSession(authOptions);
+
+  if (!session || !session.user || !(session.user as any).id) {
+    return NextResponse.json({ success: false, error: 'Unauthorized. Please log in.' }, { status: 401 });
+  }
+  const authenticatedUserId = (session.user as any).id;
 
   try {
     const body = (await req.json()) as PortfolioSaveRequestBody;
@@ -45,19 +52,13 @@ export async function POST(req: NextRequest) {
         { status: 400 }
       );
     }
-    
-    // For Prisma Json fields, data must be stored as a JSON string if it's an array or complex object.
-    // Prisma handles serialization for Json type if you pass an object/array directly.
-    // However, if you changed from Json[] to Json to support SQLite,
-    // you must ensure the client sends a JSON string, or stringify here.
-    // For this implementation, we assume Prisma client handles JS objects/arrays correctly for Json type.
-    // If Json[] was changed to Json for SQLite, the actual data (arrays) are stored within that Json field.
 
+    // Data is already Json[] in Prisma schema now (PostgreSQL), Prisma handles serialization.
     const portfolioData = {
       userId: authenticatedUserId,
-      userInfo: userInfo, // Prisma expects a JSON-compatible object
-      socialLinks: socialLinks, // Prisma expects a JSON-compatible object (array of objects)
-      projects: projects, // Prisma expects a JSON-compatible object (array of objects)
+      userInfo: userInfo,
+      socialLinks: socialLinks,
+      projects: projects,
       themeId: themeId,
       layoutId: layoutId,
       customCss: customCss,
@@ -65,21 +66,26 @@ export async function POST(req: NextRequest) {
 
     const savedPortfolio = await prisma.portfolio.upsert({
       where: { userId: authenticatedUserId },
-      create: portfolioData,
-      update: {
+      create: {
         ...portfolioData,
-        userId: undefined, // Cannot update userId
-        lastUpdatedAt: new Date(),
+        // Ensure relations or other non-Json fields are correctly handled if needed
+        // For example, user: { connect: { id: authenticatedUserId } } is implicit in upsert by userId
+      },
+      update: {
+        userInfo: userInfo,
+        socialLinks: socialLinks,
+        projects: projects,
+        themeId: themeId,
+        layoutId: layoutId,
+        customCss: customCss,
+        lastUpdatedAt: new Date(), // Prisma @updatedAt handles this automatically
       },
     });
 
     return NextResponse.json({ success: true, data: savedPortfolio }, { status: 200 });
   } catch (error) {
     console.error('Error saving portfolio:', error);
-    let errorMessage = 'An unexpected error occurred.';
-    if (error instanceof Error) {
-        errorMessage = error.message;
-    }
+    const errorMessage = error instanceof Error ? error.message : 'An unexpected error occurred.';
     return NextResponse.json(
       { success: false, error: 'Failed to save portfolio data.', details: errorMessage },
       { status: 500 }

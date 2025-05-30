@@ -2,12 +2,14 @@
 
 import { useState, useEffect, useMemo } from 'react';
 import Link from 'next/link';
-import { 
-  PortfolioData, 
+import { useSession } from 'next-auth/react';
+import { useRouter } from 'next/navigation'; // For App Router
+import {
+  PortfolioData,
   Project as ProjectType, // Renamed to avoid conflict with state variable name if any
-  SocialLink as SocialLinkType, 
+  SocialLink as SocialLinkType,
   SocialPlatform,
-  UserInfo 
+  UserInfo
 } from '../../types/portfolio';
 import { generatePortfolioHtml } from '../../lib/portfolio-generator';
 
@@ -26,6 +28,9 @@ interface ProjectState {
 }
 
 export default function EditorPage() {
+  const { data: session, status } = useSession();
+  const router = useRouter();
+
   const [activeTab, setActiveTab] = useState('preview');
   const [selectedTheme, setSelectedTheme] = useState('default');
   const [selectedLayout, setSelectedLayout] = useState('standard');
@@ -47,7 +52,7 @@ export default function EditorPage() {
   ]);
   
   const [customCss, setCustomCss] = useState(''); // For future use
-  
+
   const [isFetchingRepoInfo, setIsFetchingRepoInfo] = useState<Record<number, boolean>>({}); // For individual project loading state
   const [fetchError, setFetchError] = useState<string | null>(null);
 
@@ -68,53 +73,69 @@ export default function EditorPage() {
     { id: 'sidebar', name: 'Sidebar Layout' },
   ];
 
-  // Fetch existing portfolio data on mount
+  // Authentication and Data Loading Effect
   useEffect(() => {
-    const loadPortfolioData = async () => {
-      setIsLoadingData(true);
-      setSaveStatus(null); // Clear previous save status messages
-      try {
-        const response = await fetch('/api/portfolio/load');
-        if (response.ok) {
-          const result = await response.json();
-          if (result.success && result.data) {
-            const { userInfo, socialLinks: dbSocialLinks, projects: dbProjects, themeId, layoutId, customCss: dbCustomCss } = result.data;
-            if (userInfo) {
-              setName(userInfo.name || '');
-              setProfessionalTitle(userInfo.professionalTitle || '');
-              setAboutMe(userInfo.aboutMe || '');
-              setProfilePictureUrl(userInfo.profilePictureUrl || '');
+    if (status === 'loading') return; // Wait until session status is resolved
+
+    if (!session) {
+      router.push('/'); // Redirect to home or a login page if not authenticated
+    } else {
+      // If authenticated, load portfolio data
+      const loadPortfolioData = async () => {
+        setIsLoadingData(true);
+        setSaveStatus(null);
+        try {
+          const response = await fetch('/api/portfolio/load'); // Auth is handled by cookies/session
+          if (response.ok) {
+            const result = await response.json();
+            if (result.success && result.data) {
+              const { userInfo, socialLinks: dbSocialLinks, projects: dbProjects, themeId, layoutId, customCss: dbCustomCss } = result.data;
+              if (userInfo) {
+                setName(userInfo.name || '');
+                setProfessionalTitle(userInfo.professionalTitle || '');
+                setAboutMe(userInfo.aboutMe || '');
+                setProfilePictureUrl(userInfo.profilePictureUrl || '');
+              }
+              const parseJsonArray = (jsonString: any) => {
+                  if (Array.isArray(jsonString)) return jsonString;
+                  try { return jsonString ? JSON.parse(jsonString) : []; }
+                  catch { return []; }
+              };
+              setSocialLinks(parseJsonArray(dbSocialLinks));
+              setProjects(parseJsonArray(dbProjects));
+              setSelectedTheme(themeId || 'default');
+              setSelectedLayout(layoutId || 'standard');
+              setCustomCss(dbCustomCss || '');
+            } else if (response.status === 404 || (result.data && result.data.message === 'Portfolio not found for this user.')) {
+              // No existing data for this user, this is fine.
+            } else {
+              setSaveStatus({message: result.message || "Failed to load portfolio data.", type: "error"});
             }
-            const parseJsonArray = (jsonString: any) => {
-                if (Array.isArray(jsonString)) return jsonString;
-                try { return jsonString ? JSON.parse(jsonString) : []; }
-                catch { return []; }
-            };
-            setSocialLinks(parseJsonArray(dbSocialLinks));
-            setProjects(parseJsonArray(dbProjects));
-            setSelectedTheme(themeId || 'default');
-            setSelectedLayout(layoutId || 'standard');
-            setCustomCss(dbCustomCss || '');
-          } else if (result.status === 404 || (result.data && result.data.message === 'Portfolio not found for this user.')) {
-            // No existing data, fine to leave fields empty or with defaults
+          } else if (response.status === 404) {
+            // Portfolio not found for this user, this is fine.
           } else {
-            setSaveStatus({message: result.message || "Failed to load portfolio.", type: "error"});
+             setSaveStatus({message: `Error loading data: ${response.statusText}`, type: "error"});
           }
-        } else if (response.status === 404) {
-            // No existing data, fine to leave fields empty or with defaults
+        } catch (error) {
+          console.error('Error fetching portfolio data:', error);
+          setSaveStatus({message: "Client-side error fetching portfolio data.", type: "error"});
+        } finally {
+          setIsLoadingData(false);
         }
-        else {
-           setSaveStatus({message: `Error loading data: ${response.statusText}`, type: "error"});
-        }
-      } catch (error) {
-        console.error('Error fetching portfolio data:', error);
-        setSaveStatus({message: "Client-side error fetching portfolio data.", type: "error"});
-      } finally {
-        setIsLoadingData(false);
-      }
-    };
-    loadPortfolioData();
-  }, []);
+      };
+      loadPortfolioData();
+    }
+  }, [session, status, router]);
+
+  // Render loading state or redirect message
+  if (status === 'loading' || (status === 'unauthenticated' && !session)) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gray-100">
+        <p className="text-lg text-gray-600">Loading or Redirecting...</p>
+      </div>
+    );
+  }
+  // Note: isLoadingData will show more specific loading for portfolio content after auth check
 
   const portfolioHtml = useMemo(() => {
     const currentThemeObj = themes.find(t => t.id === selectedTheme) || themes[0];
@@ -206,7 +227,7 @@ export default function EditorPage() {
                 <div className="flex items-center justify-between">
                   <div className="text-lg font-semibold text-gray-800">Live Preview</div> {/* Adjusted text color & weight */}
                   <div className="text-sm text-gray-600"> {/* Adjusted text color */}
-                    Theme: <span className="font-semibold text-gray-700">{themes.find(t => t.id === selectedTheme)?.name || 'Default Theme'}</span> | 
+                    Theme: <span className="font-semibold text-gray-700">{themes.find(t => t.id === selectedTheme)?.name || 'Default Theme'}</span> |
                     Layout: <span className="font-semibold text-gray-700">{layouts.find(l => l.id === selectedLayout)?.name || 'Standard Layout'}</span>
                   </div>
                 </div>
@@ -295,7 +316,7 @@ export default function EditorPage() {
               {isLoadingData && <p className="text-center text-gray-500 mb-4 animate-pulse">Loading content...</p>}
               <form onSubmit={(e) => { e.preventDefault(); handleSaveChanges(); }} className={`space-y-10 ${isLoadingData ? 'opacity-60 cursor-not-allowed' : ''}`}> {/* Increased spacing */}
                 <fieldset disabled={isLoadingData}>
-                
+
                 {/* User Info Section - Card like structure */}
                 <div className="border border-gray-200 rounded-lg p-6 shadow-sm">
                   <h2 className="text-2xl font-semibold text-gray-800 mb-6">About You</h2>
@@ -397,7 +418,7 @@ export default function EditorPage() {
                   ))}
                   </div>
                 </div>
-                
+
                 {fetchError && (
                   <div className="p-4 mb-4 rounded-md text-sm shadow bg-red-100 border border-red-300 text-red-800">
                     <p className="font-medium">Error fetching repo:</p>

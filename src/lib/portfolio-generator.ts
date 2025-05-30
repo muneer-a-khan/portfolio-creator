@@ -178,7 +178,7 @@ export const generateMinimalistDarkPortfolioHtml = (data: PortfolioData): string
         ${socialLinksHtml}
       </ul>
     </section>
-    
+
     <footer class="text-center text-gray-500 mt-16 text-sm">
       <p>Last updated: ${new Date(data.lastUpdatedAt).toLocaleDateString()}</p>
       <p>&copy; ${new Date().getFullYear()} ${userInfo.name}. All rights reserved.</p>
@@ -260,7 +260,7 @@ export const generateCreativeGridPortfolioHtml = (data: PortfolioData): string =
         ${projectsGridHtml}
       </div>
     </main>
-    
+
     <footer class="text-center text-gray-600 mt-16 py-8 border-t border-gray-300">
       <p>Last updated: ${new Date(data.lastUpdatedAt).toLocaleDateString()}</p>
       <p>&copy; ${new Date().getFullYear()} ${userInfo.name}. Crafted with passion.</p>
