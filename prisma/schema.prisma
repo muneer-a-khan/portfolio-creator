@@ -3,51 +3,43 @@ generator client {
 }
 
 datasource db {
-  provider  = "postgresql"
-  url       = env("DATABASE_URL")
-  directUrl = env("DIRECT_URL")
+  provider = "sqlite"
+  url      = "file:./dev.db" // Placeholder for local dev, env vars needed for actual deployment
+  // provider  = "postgresql"
+  // url       = env("DATABASE_URL")
+  // directUrl = env("DIRECT_URL") // Temporarily removed for db push
 }
 
 model User {
-  id           String             @id @default(uuid()) @db.Uuid
+  id           String             @id @default(uuid()) // Removed @db.Uuid
   email        String             @unique
   passwordHash String?
   stripeId     String?
-  createdAt    DateTime           @default(now()) @db.Timestamptz(6)
+  createdAt    DateTime           @default(now()) // Removed @db.Timestamptz(6)
   accounts     Account[]
-  settings     PortfolioSettings?
-  projects     Project[]
+  portfolios Portfolio[] // Relation to Portfolio
   sessions     Session[]
 }
 
-model Project {
-  id          String   @id @default(cuid())
-  userId      String   @db.Uuid
-  title       String
-  description String
-  githubLink  String?
-  fileUrl     String?
-  createdAt   DateTime @default(now()) @db.Timestamptz(6)
-  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "fk_user")
+model Portfolio {
+  id            String    @id @default(cuid())
+  userId        String    // Removed @db.Uuid
+  userInfo      Json      // Store UserInfo object { name: string, professionalTitle: string, aboutMe: string, profilePictureUrl?: string }
+  socialLinks   Json      // Store array of SocialLink objects { platform: string, url: string } - Changed from Json[]
+  projects      Json      // Store array of Project objects { name: string, description: string, repositoryUrl?: string, liveUrl?: string, technologies: string[] } - Changed from Json[]
+  themeId       String    @default("default")
+  layoutId      String    @default("standard")
+  customCss     String?
+  createdAt     DateTime  @default(now())
+  lastUpdatedAt DateTime  @updatedAt
 
-  @@index([userId])
-}
-
-model PortfolioSettings {
-  id        String  @id @default(cuid())
-  userId    String  @unique @db.Uuid
-  theme     String  @default("default")
-  layout    String  @default("standard")
-  aboutMe   String  @default("")
-  linkedIn  String?
-  github    String?
-  resumeUrl String?
-  user      User    @relation(fields: [userId], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "fk_user")
+  user          User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  @@unique([userId]) // Assuming one portfolio per user for now, similar to PortfolioSettings
 }
 
 model Account {
   id                String  @id @default(cuid())
-  userId            String  @db.Uuid
+  userId            String  // Removed @db.Uuid
   type              String
   provider          String
   providerAccountId String
@@ -58,7 +50,7 @@ model Account {
   scope             String?
   id_token          String?
   session_state     String?
-  user              User    @relation(fields: [userId], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "fk_user")
+  user              User    @relation(fields: [userId], references: [id], onDelete: Cascade) // Removed onUpdate & map
 
   @@unique([provider, providerAccountId])
   @@index([userId])
@@ -67,9 +59,9 @@ model Account {
 model Session {
   id           String   @id @default(cuid())
   sessionToken String   @unique
-  userId       String   @db.Uuid
-  expires      DateTime @db.Timestamptz(6)
-  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "fk_user")
+  userId       String   // Removed @db.Uuid
+  expires      DateTime // Removed @db.Timestamptz(6)
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade) // Removed onUpdate & map
 
   @@index([userId])
 }
@@ -77,7 +69,7 @@ model Session {
 model VerificationToken {
   identifier String
   token      String   @unique
-  expires    DateTime @db.Timestamptz(6)
+  expires    DateTime // Removed @db.Timestamptz(6)
 
   @@unique([identifier, token])
 }

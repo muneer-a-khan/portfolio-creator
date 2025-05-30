@@ -2,6 +2,9 @@
 
 import { useState } from 'react';
 import Link from 'next/link';
+import { generatePortfolioHtml, samplePortfolioData } from '../../lib/portfolio-generator';
+import JSZip from 'jszip';
+import { saveAs } from 'file-saver';
 
 export default function ExportPage() {
   const [exporting, setExporting] = useState(false);
@@ -9,12 +12,28 @@ export default function ExportPage() {
 
   const handleExport = async () => {
     setExporting(true);
-    
-    // Mock export process
-    setTimeout(() => {
-      setExporting(false);
+    setExportComplete(false); // Reset for re-export
+    console.log('Starting export...');
+
+    try {
+      const htmlContent = generatePortfolioHtml(samplePortfolioData);
+      const zip = new JSZip();
+      zip.file("index.html", htmlContent);
+      // TODO: Add other assets like images, custom CSS files if any from samplePortfolioData
+      // e.g., if (samplePortfolioData.customCss) zip.file("style.css", samplePortfolioData.customCss);
+      // and ensure index.html links to style.css
+
+      const zipBlob = await zip.generateAsync({ type: "blob" });
+      saveAs(zipBlob, "portfolio.zip");
+
+      console.log('Export finished and download triggered.');
       setExportComplete(true);
-    }, 3000);
+    } catch (error) {
+      console.error('Export failed:', error);
+      // TODO: Add user-facing error message in the UI
+    } finally {
+      setExporting(false);
+    }
   };
 
   return (
@@ -54,7 +73,7 @@ export default function ExportPage() {
                 </div>
                 <div className="ml-3 flex-1 md:flex md:justify-between">
                   <p className="text-sm text-blue-700">
-                    Your portfolio will be packaged as a ZIP file containing HTML, CSS, and JavaScript files. You can host these files on any web hosting service.
+                    Your portfolio will be packaged as a ZIP file containing an `index.html` file. You can host this on any web hosting service.
                   </p>
                 </div>
               </div>
@@ -70,7 +89,7 @@ export default function ExportPage() {
                   onClick={handleExport}
                   disabled={exporting}
                   className={`inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white ${
-                    exporting ? 'bg-blue-400' : exportComplete ? 'bg-green-600' : 'bg-blue-600 hover:bg-blue-700'
+                    exporting ? 'bg-blue-400 cursor-not-allowed' : exportComplete ? 'bg-green-600 hover:bg-green-700' : 'bg-blue-600 hover:bg-blue-700'
                   } focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500`}
                 >
                   {exporting ? (
@@ -86,16 +105,16 @@ export default function ExportPage() {
                       <svg className="-ml-1 mr-2 h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
                         <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
                       </svg>
-                      Download ZIP
+                      Download Portfolio.zip Again
                     </>
                   ) : (
-                    'Generate Portfolio'
+                    'Generate and Download ZIP'
                   )}
                 </button>
               </div>
             </div>
 
-            {exportComplete && (
+            {exportComplete && !exporting && (
               <div className="bg-green-50 border border-green-200 rounded-md p-4 mt-6">
                 <div className="flex">
                   <div className="flex-shrink-0">
@@ -104,9 +123,9 @@ export default function ExportPage() {
                     </svg>
                   </div>
                   <div className="ml-3">
-                    <h3 className="text-sm font-medium text-green-800">Export Complete!</h3>
+                    <h3 className="text-sm font-medium text-green-800">Portfolio ZIP Generated!</h3>
                     <div className="mt-2 text-sm text-green-700">
-                      <p>Your portfolio has been successfully generated. After downloading, check out our <Link href="/instructions" className="font-medium underline">deployment guide</Link> for step-by-step instructions on how to publish your portfolio online.</p>
+                      <p>If your download didn&apos;t start automatically, click the &quot;Download Portfolio.zip Again&quot; button. Check out our <Link href="/instructions" className="font-medium underline">deployment guide</Link> for step-by-step instructions on how to publish your portfolio online.</p>
                     </div>
                   </div>
                 </div>
